@@ -1,0 +1,73 @@
+#set directory
+#run
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(viridis)
+
+#open file - "dt" name of data
+dt <- read.csv("gar_transcriptome.csv")
+
+#make dt from wide to long format
+##pivot_longer from tidyr
+###rearrange except gene_group and gene columns
+####reorganize names and values
+dt_long <- dt %>%
+     pivot_longer(
+         cols = -c(gene_group, gene),
+         names_to = "region",
+         values_to = "expression"
+     )
+
+#make data file for plot (alphabetical order)
+##n=total number of genes, for dot size
+###mean expression only for expressed genes
+dot_data <- dt_long %>%
+  group_by(region, gene_group) %>%
+  summarise(
+    n_genes = n(),  # total number of genes, counted for dot size
+    avg_expression = mean(expression[expression > 1], na.rm = TRUE),  # only expressed genes
+    .groups = "drop"
+  )
+
+#reorder dot_data
+##make embryo and embryo_ovary come to the first two colums
+###rest in alphabetical order
+dot_data <- dot_data %>%
+  mutate(
+    region = factor(
+      region,
+      levels = c(
+        "embryo",
+        "embryo_ovary",
+        sort(setdiff(unique(region), c("embryo", "embryo_ovary")))
+      )
+    )
+  )
+
+
+#make n_genes integer (not necessary)
+dot_data$n_genes <- round(dot_data$n_genes)
+
+#plot
+ggplot(dot_data, aes(
+  x = region,
+  y = gene_group,
+  size = n_genes,
+  color = avg_expression
+)) +
+  geom_point(alpha = 0.9) +
+  scale_size(range = c(2, 10), breaks = sort(unique(dot_data$n_genes))) +
+  scale_color_gradient(low = "pink", high = "darkred") +
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    x = "Expression Domain",
+    y = "Gene Group",
+    size = "Number of Genes",
+    color = "Average Expression (TPM)"
+  ) +
+  guides(
+    size = guide_legend(order = 1),
+    color = guide_colorbar(order = 2)
+)

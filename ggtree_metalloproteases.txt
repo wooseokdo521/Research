@@ -1,0 +1,37 @@
+#set directory
+#run
+library(ggtree)
+library(ape)
+library(phangorn)
+
+#read tree
+tree <- read.tree("DanielTree.raxml.support")
+tip_labels <- tree$tip.label
+
+#midpoint rooting
+tree_rooted <- midpoint(tree)
+
+#remove blank from bootstrap
+tree$node.label[tree$node.label == ""] <- NA
+tree$node.label <- as.numeric(tree$node.label)
+
+#find gars
+spottedgar <- tree_rooted$tip.label[grepl("SpottedGar", tree_rooted$tip.label)]
+
+#tree limit
+max_x <- max(node.depth.edgelength(tree))
+min_y <- 0
+
+#plot tree
+ggtree(tree_rooted, branch.length = "branch.length") +
+  geom_tiplab(size = 3, color = "black") +
+  geom_tiplab(aes(subset = label %in% spottedgar), color = "red", size = 3) +
+  geom_text2(aes(subset = !isTip & !is.na(label) & label > 70, label = label),
+             hjust = -0.3, size = 2.5) +
+  geom_treescale(x = max_x, y = min_y, width = 0.2, fontsize = 3) +
+  theme(plot.margin = margin(t = 5, r = 200, b = 5, l = 5))+
+  coord_cartesian(xlim = c(0, max_x), clip = "off")
+
+#save tree
+ggsave("DanielTree.pdf",
+       width = 16, height = 30, units = "in")
